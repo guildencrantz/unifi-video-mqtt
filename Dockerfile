@@ -2,13 +2,10 @@ FROM alpine:latest
 
 MAINTAINER Zachary McGibbon
 
-# Update package cache
-RUN apk update
-
 # Install required packages
-RUN apk add \
-        bash \
-        inotify-tools \
+RUN apk --update add --no-cache \
+        bash                    \
+        inotify-tools           \
         mosquitto-clients
 
 # Get script and move to the right place
