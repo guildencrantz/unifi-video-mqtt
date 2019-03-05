@@ -1,24 +1,18 @@
 #!/bin/bash
 
 # Unifi Video Vars
-UNIFI_MOTION_LOG=/var/log/unifi-video/motion.log
+UNIFI_MOTION_LOG="${UNIFI_MOTION_LOG:-motion.log}"
 
 # MQTT Vars
-MQTT_SERVER="192.168.x.x"
-MQTT_PORT="1883"
-MQTT_TOPIC_BASE="camera/motion"
+MQTT_SERVER="${MQTT_SERVER:-127.0.0.1}"
+MQTT_PORT="${MQTT_PORT:-1883}"
+MQTT_TOPIC_BASE="${MQTT_TOPIC_BASE:-camera/motion}"
 
 # MQTT User/Pass Vars, only use if needed
-#MQTT_USER="username"
-#MQTT_PASS="password"
+MQTT_USER="${MQTT_USER:-}"
+MQTT_PASS="${MQTT_PASS:-}"
 
-# Camera Defs
-CAM1_NAME="camera1_name"
-CAM1_ID="F0xxxxxxxxxx"
-CAM2_NAME="camera2_name"
-CAM2_ID="F0xxxxxxxxxx"
-CAM3_NAME="camera3_name"
-CAM4_ID="F0xxxxxxxxxx"
+MQTT_ID="${MQTT_ID:unifi-video}"
 
 # --------------------------------------------------------------------------------
 # Script starts here
@@ -37,41 +31,15 @@ else
   MQTT_ID_OPT=""
 fi
 
+echo "Watching $UNIFI_MOTION_LOG"
 while inotifywait -e modify $UNIFI_MOTION_LOG; do
-  LAST_MESSAGE=`tail -n1 $UNIFI_MOTION_LOG`
-  LAST_CAM=`echo $LAST_MESSAGE | awk -F '[][]' '{print $2}'`
-  LAST_EVENT=`echo $LAST_MESSAGE | cut -d ':' -f 5 | cut -d ' ' -f 1`
+	source <(tail -n1 $UNIFI_MOTION_LOG | sed -rn 's/(.*)type:([^\ ]*)(.*)\((.*)\).*/LAST_EVENT=\2\nCAM_NAME="\4"/p; t; s/.*\((.*)\).*/LAST_EVENT=stop CAM_NAME="\1"/p')
+	echo "Motion on '$CAM_NAME' $LAST_EVENT"
 
-  if echo $LAST_CAM | grep -n1 $CAM1_ID; then
-    # Camera 1 triggered
-	  if [[ $LAST_EVENT == "start" ]]; then
-	    echo "Motion started on $CAM1_NAME"
-	    mosquitto_pub -h $MQTT_SERVER -p $MQTT_PORT $MQTT_USER_PASS -r $MQTT_ID_OPT -t $MQTT_TOPIC_BASE/$CAM1_NAME -m "ON" &
-	  else
-	    echo "Motion stopped on $CAM1_NAME"
-	    mosquitto_pub -h $MQTT_SERVER -p $MQTT_PORT $MQTT_USER_PASS -r $MQTT_ID_OPT -t $MQTT_TOPIC_BASE/$CAM1_NAME -m "OFF" &
-	  fi
-  fi
+	MOTION_STATE="OFF"
+	if [[ $LAST_EVENT == "start" ]]; then
+		MOTION_STATE="ON"
+	fi
 
-  if echo $LAST_CAM | grep -n1 $CAM2_ID; then
-    # Camera 2 triggered
-	  if [[ $LAST_EVENT == "start" ]]; then
-	    echo "Motion started on $CAM2_NAME"
-	    mosquitto_pub -h $MQTT_SERVER -p $MQTT_PORT $MQTT_USER_PASS -r $MQTT_ID_OPT -t $MQTT_TOPIC_BASE/$CAM2_NAME -m "ON" &
-	  else
-	    echo "Motion stopped on $CAM2_NAME"
-	    mosquitto_pub -h $MQTT_SERVER -p $MQTT_PORT $MQTT_USER_PASS -r $MQTT_ID_OPT -t $MQTT_TOPIC_BASE/$CAM2_NAME -m "OFF" &
-	  fi
-  fi
-
-  if echo $LAST_CAM | grep -n1 $CAM3_ID; then
-    # Camera 3 triggered
-	  if [[ $LAST_EVENT == "start" ]]; then
-	    echo "Motion started on $CAM3_NAME"
-	    mosquitto_pub -h $MQTT_SERVER -p $MQTT_PORT $MQTT_USER_PASS -r $MQTT_ID_OPT -t $MQTT_TOPIC_BASE/$CAM3_NAME -m "ON" &
-	  else
-	    echo "Motion stopped on $CAM3_NAME"
-	    mosquitto_pub -h $MQTT_SERVER -p $MQTT_PORT $MQTT_USER_PASS -r $MQTT_ID_OPT -t $MQTT_TOPIC_BASE/$CAM3_NAME -m "OFF" &
-	  fi
-  fi
+	mosquitto_pub -h $MQTT_SERVER -p $MQTT_PORT $MQTT_USER_PASS --capath /etc/ssl/certs -r $MQTT_ID_OPT -t "$MQTT_TOPIC_BASE/$CAM_NAME" -m $MOTION_STATE &
 done

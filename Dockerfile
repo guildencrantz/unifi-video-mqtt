@@ -6,16 +6,14 @@ MAINTAINER Zachary McGibbon
 RUN apk --update add --no-cache \
         bash                    \
         inotify-tools           \
-        mosquitto-clients
+        mosquitto-clients       \
+        ca-certificates
 
 # Get script and move to the right place
-COPY ./unifi-video-mqtt.sh /usr/local/bin
+COPY ./*.sh /usr/local/bin/
 
 # Make script executable
-RUN chmod a+x /usr/local/bin/unifi-video-mqtt.sh
-
-# Make unifi log directory
-RUN mkdir -p /var/log/unifi-video
+RUN chmod a+x /usr/local/bin/*.sh
 
 # Start log monitoring
-ENTRYPOINT ["/usr/local/bin/unifi-video-mqtt.sh"]
+ENTRYPOINT ["/usr/local/bin/unifi-video-mqtt-multiple.sh"]

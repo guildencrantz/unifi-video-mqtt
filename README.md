@@ -75,3 +75,25 @@ Once all changes are done, go ahead and start the daemon
 ```
 systemctl start unifi-video-mqtt
 ```
+
+# Docker
+
+If you don't want to manage the `mosquito` client and dependencies on your system you can easily run this in docker:
+
+```
+docker build -t unifi-video-mqtt .
+
+docker run -d --restart always --name unifi-video-mqtt -u $(id -u unifi-video):$(id -g unifi-video) -v /usr/lib/unifi-video/logs:/unifi-logs -w /unifi-logs --env-file unifi-video.env unifi-video-mqtt
+```
+
+Execution notes:
+* Don't run as root.
+	* On arch the unifi-video user is `unifi-video`, hence the `id -u unifi-video`. If the unify video service runs as somebody else on your system either swap out the username.
+* Volume mount in the logs
+	*	Again, I'm running on arch so the logs are at `/usr/lib/unifi-video/logs`, but `/var/log/unifi-video/motion.log` is a likely alternative.
+* Use an environment file to inject your overrides (such as MQTT username and password).
+
+		MQTT_SERVER=hassio.local
+		MQTT_PORT=8883
+		MQTT_USER=unifi-video
+		MQTT_PASS=super-secure-unifi-video-password
